@@ -1,244 +1,278 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
-import { Link } from "react-router-dom";
-import { Briefcase } from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
+import { Briefcase, UserPlus } from "lucide-react";
 import { toast } from "sonner";
-import axios from "axios";
+import api from "../lib/api";
 
 const Signup = () => {
   const [formData, setFormData] = useState({
     username: "",
     email: "",
     password: "",
-    confirmPassword: "",
+    password_confirm: "",
     type: "candidat",
     nom: "",
     prenom: "",
     telephone: "",
-    adresse: "",
+    nomEntreprise: "",
+    secteur: "",
+    ville: "",
+    pays: "Algerie",
     dateNaissance: "",
-    photoProfil: null,
   });
 
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
-    if (e.target.name === "photoProfil") {
-      setFormData({ ...formData, photoProfil: e.target.files[0] });
-    } else {
-      setFormData({ ...formData, [e.target.name]: e.target.value });
-    }
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Validation simple
-    if (formData.password !== formData.confirmPassword) {
-      toast.error("Les mots de passe ne correspondent pas");
+    if (formData.password !== formData.password_confirm) {
+      toast.error("Les mots de passe ne correspondent pas.");
       setIsLoading(false);
       return;
     }
 
     if (formData.password.length < 8) {
-      toast.error("Le mot de passe doit contenir au moins 8 caractères");
+      toast.error("Le mot de passe doit contenir au moins 8 caracteres.");
       setIsLoading(false);
       return;
     }
 
     try {
-      const data = new FormData();
-      Object.entries(formData).forEach(([key, value]) => {
-        if (value !== null) data.append(key, value);
+      if (formData.type === "entreprise" && !formData.nomEntreprise.trim()) {
+        toast.error("Le nom de l'entreprise est obligatoire.");
+        setIsLoading(false);
+        return;
+      }
+
+      const userPayload = {
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+        password_confirm: formData.password_confirm,
+        type: formData.type,
+        nom: formData.nom || "",
+        prenom: formData.type === "candidat" ? formData.prenom || "" : "",
+        telephone: formData.telephone || "",
+        dateNaissance: formData.type === "candidat" ? formData.dateNaissance || "" : "",
+      };
+
+      const userForm = new FormData();
+      Object.entries(userPayload).forEach(([key, value]) => {
+        if (value !== null && value !== undefined && value !== "") {
+          userForm.append(key, value);
+        }
       });
 
-      const response = await axios.post(
-        "http://localhost:8000/utilisateurs/",
-        data,
-        { headers: { "Content-Type": "multipart/form-data" } }
-      );
+      await api.post("/utilisateurs/", userForm, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
 
-      toast.success("Inscription réussie !");
+      if (formData.type === "entreprise") {
+        const loginRes = await api.post("/api/accessToken/", {
+          username: formData.username,
+          password: formData.password,
+        });
+        localStorage.setItem("accessToken", loginRes.data.access);
+        localStorage.setItem("refreshToken", loginRes.data.refresh);
+
+        await api.post("/entreprises/", {
+          nomEntreprise: formData.nomEntreprise,
+          secteur: formData.secteur || "",
+          ville: formData.ville || "",
+          pays: formData.pays || "Algerie",
+          recevoirCandidatures: true,
+        });
+
+        toast.success("Entreprise creee avec succes.");
+        navigate("/dashboard-entreprise");
+        return;
+      }
+
+      toast.success("Inscription reussie.");
       navigate("/login");
     } catch (error) {
       console.error(error);
-      toast.error("Erreur lors de l'inscription");
+      const apiError =
+        error?.response?.data && typeof error.response.data === "object"
+          ? JSON.stringify(error.response.data)
+          : "Erreur lors de l'inscription.";
+      toast.error(apiError);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted/30 to-background p-4">
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5" />
-
-      <Card className="w-full max-w-md relative shadow-[var(--shadow-large)]">
-        <CardHeader className="text-center space-y-4">
-          <div className="flex justify-center">
-            <div className="w-16 h-16 bg-gradient-to-br from-primary to-primary-dark rounded-2xl flex items-center justify-center">
-              <Briefcase className="w-8 h-8 text-primary-foreground" />
+    <div className="min-h-screen bg-[var(--app-bg)]">
+      <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_15%_15%,hsl(var(--primary)/0.08),transparent_40%),radial-gradient(circle_at_80%_10%,hsl(var(--secondary)/0.08),transparent_40%)]" />
+      <div className="mx-auto flex min-h-screen max-w-5xl items-center justify-center px-6">
+        <div className="grid w-full gap-10 lg:grid-cols-[1.1fr_1fr]">
+          <div className="hidden flex-col justify-center lg:flex">
+            <div className="flex items-center gap-3 text-slate-900">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[hsl(var(--primary))] text-white">
+                <Briefcase className="h-6 w-6" />
+              </div>
+              <span className="text-xl font-display font-semibold">AutoCandidature</span>
             </div>
+            <h1 className="mt-8 text-4xl font-display font-semibold leading-tight text-slate-900">
+              Creez un compte pour automatiser vos candidatures.
+            </h1>
+            <p className="mt-4 max-w-md text-base text-slate-600">
+              Acces rapide, suivi clair, et productivite maximale des le premier jour.
+            </p>
           </div>
-          <CardTitle className="text-3xl font-bold">Inscription</CardTitle>
-          <CardDescription className="text-base">
-            Créez votre compte AutoCandidature
-          </CardDescription>
-        </CardHeader>
-
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Type d'utilisateur</label>
-              <select
-                name="type"
-                value={formData.type}
-                onChange={handleChange}
-                className="w-full h-12 border rounded px-2"
-              >
-                <option value="candidat">Candidat</option>
-                <option value="entreprise">Entreprise</option>
-              </select>
+          <div className="rounded-3xl border border-slate-200 bg-[hsl(var(--card))] p-8 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Inscription</p>
+                <h2 className="mt-2 text-2xl font-display font-semibold text-slate-900">Creer un compte</h2>
+              </div>
+              <div className="rounded-2xl bg-slate-50 p-3">
+                <UserPlus className="h-5 w-5 text-slate-500" />
+              </div>
             </div>
-
-            <div className="space-y-2">
-              <label htmlFor="username" className="text-sm font-medium text-foreground">Nom d'utilisateur</label>
-              <Input
-                id="username"
+            <form onSubmit={handleSubmit} className="mt-8 space-y-4">
+              <label className="block text-sm text-slate-600">
+                Type
+                <select
+                  name="type"
+                  value={formData.type}
+                  onChange={handleChange}
+                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700"
+                >
+                  <option value="candidat">Candidat</option>
+                  <option value="entreprise">Entreprise</option>
+                </select>
+              </label>
+              {formData.type === "candidat" ? (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <input
+                    name="prenom"
+                    placeholder="Prenom"
+                    value={formData.prenom}
+                    onChange={handleChange}
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+                  />
+                  <input
+                    name="nom"
+                    placeholder="Nom"
+                    value={formData.nom}
+                    onChange={handleChange}
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+                  />
+                </div>
+              ) : (
+                <>
+                  <input
+                    name="nomEntreprise"
+                    placeholder="Nom de l'entreprise"
+                    value={formData.nomEntreprise}
+                    onChange={handleChange}
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+                    required
+                  />
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <input
+                      name="secteur"
+                      placeholder="Secteur d'activite"
+                      value={formData.secteur}
+                      onChange={handleChange}
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+                    />
+                    <input
+                      name="ville"
+                      placeholder="Ville"
+                      value={formData.ville}
+                      onChange={handleChange}
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+                    />
+                  </div>
+                  <input
+                    name="pays"
+                    placeholder="Pays"
+                    value={formData.pays}
+                    onChange={handleChange}
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+                  />
+                </>
+              )}
+              <input
                 name="username"
-                type="text"
+                placeholder="Nom utilisateur"
                 value={formData.username}
                 onChange={handleChange}
                 required
-                className="h-12"
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
               />
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="nom" className="text-sm font-medium text-foreground">Nom</label>
-              <Input
-                id="nom"
-                name="nom"
-                type="text"
-                value={formData.nom}
-                onChange={handleChange}
-                className="h-12"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="prenom" className="text-sm font-medium text-foreground">Prénom</label>
-              <Input
-                id="prenom"
-                name="prenom"
-                type="text"
-                value={formData.prenom}
-                onChange={handleChange}
-                className="h-12"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="dateNaissance" className="text-sm font-medium text-foreground">Date de naissance</label>
-              <Input
-                id="dateNaissance"
-                name="dateNaissance"
-                type="date"
-                value={formData.dateNaissance}
-                onChange={handleChange}
-                className="h-12"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="telephone" className="text-sm font-medium text-foreground">Téléphone</label>
-              <Input
-                id="telephone"
-                name="telephone"
-                type="text"
-                value={formData.telephone}
-                onChange={handleChange}
-                className="h-12"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="adresse" className="text-sm font-medium text-foreground">Adresse</label>
-              <Input
-                id="adresse"
-                name="adresse"
-                type="text"
-                value={formData.adresse}
-                onChange={handleChange}
-                className="h-12"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium text-foreground">Email</label>
-              <Input
-                id="email"
+              <input
                 name="email"
                 type="email"
+                placeholder="Email"
                 value={formData.email}
                 onChange={handleChange}
                 required
-                className="h-12"
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
               />
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="password" className="text-sm font-medium text-foreground">Mot de passe</label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                value={formData.password}
+              <input
+                name="telephone"
+                placeholder="Telephone"
+                value={formData.telephone}
                 onChange={handleChange}
-                required
-                className="h-12"
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
               />
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="confirmPassword" className="text-sm font-medium text-foreground">Confirmer le mot de passe</label>
-              <Input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                required
-                className="h-12"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="photoProfil" className="text-sm font-medium text-foreground">Photo de profil</label>
-              <Input
-                id="photoProfil"
-                name="photoProfil"
-                type="file"
-                onChange={handleChange}
-              />
-            </div>
-
-            <Button type="submit" className="w-full h-12" disabled={isLoading}>
-              {isLoading ? "Inscription..." : "S'inscrire"}
-            </Button>
-          </form>
-
-          <div className="mt-4 text-center">
-            <p className="text-sm text-muted-foreground">
-              Déjà un compte ? <Link to="/login" className="text-primary font-medium hover:underline">Se connecter</Link>
+              {formData.type === "candidat" && (
+                <input
+                  name="dateNaissance"
+                  type="date"
+                  value={formData.dateNaissance}
+                  onChange={handleChange}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+                />
+              )}
+              <div className="grid gap-4 md:grid-cols-2">
+                <input
+                  name="password"
+                  type="password"
+                  placeholder="Mot de passe"
+                  value={formData.password}
+                  onChange={handleChange}
+                  required
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+                />
+                <input
+                  name="password_confirm"
+                  type="password"
+                  placeholder="Confirmer"
+                  value={formData.password_confirm}
+                  onChange={handleChange}
+                  required
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+                />
+              </div>
+              <button
+                type="submit"
+                className="w-full rounded-2xl bg-[hsl(var(--primary))] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[hsl(var(--primary-dark))] disabled:opacity-70"
+                disabled={isLoading}
+              >
+                {isLoading ? "Inscription..." : "Creer le compte"}
+              </button>
+            </form>
+            <p className="mt-6 text-center text-sm text-slate-500">
+              Deja un compte ?{" "}
+              <Link to="/login" className="font-semibold text-slate-900">
+                Se connecter
+              </Link>
             </p>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 };

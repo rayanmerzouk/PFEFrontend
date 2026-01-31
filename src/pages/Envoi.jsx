@@ -24,6 +24,7 @@ import {
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
+import AppShell from "../components/layout/AppShell";
 
 // Leaflet icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -294,6 +295,11 @@ const Envoi = () => {
         offre_ids: selectedOffreIds,
       });
 
+      if (res.data?.success === false && typeof res.data?.message === "string") {
+        setMessage({ type: "error", text: res.data.message });
+        return;
+      }
+
       const created = Array.isArray(res.data?.envois_ids)
         ? res.data.envois_ids.length
         : (res.data?.created_count ?? 0);
@@ -352,19 +358,22 @@ const Envoi = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] p-4 md:p-10 font-sans text-slate-900">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
+    <AppShell
+      title="Envoi"
+      subtitle="Selectionnez un CV, ciblez les offres et diffusez en masse."
+    >
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* COLONNE GAUCHE */}
         <div className="lg:col-span-4 space-y-6">
           {/* UPLOAD + LISTE CVS */}
-          <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
+          <div className="bg-[hsl(var(--card))] p-8 rounded-3xl shadow-sm border border-slate-200/70">
             <label className="group block cursor-pointer">
-              <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-blue-100 rounded-[2rem] bg-blue-50/20 group-hover:bg-blue-50 transition-all">
-                <div className="p-4 bg-white rounded-2xl shadow-sm mb-4 group-hover:scale-110 transition-transform">
+              <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-[hsl(var(--primary)/0.2)] rounded-2xl bg-[hsl(var(--primary)/0.05)] group-hover:bg-[hsl(var(--primary)/0.08)] transition-all">
+                <div className="p-4 bg-[hsl(var(--card))] rounded-2xl shadow-sm mb-4 group-hover:scale-110 transition-transform">
                   {uploading ? (
-                    <Loader2 className="animate-spin text-blue-600" size={32} />
+                    <Loader2 className="animate-spin text-[hsl(var(--primary))]" size={32} />
                   ) : (
-                    <Upload className="text-blue-600" size={32} />
+                    <Upload className="text-[hsl(var(--primary))]" size={32} />
                   )}
                 </div>
                 <span className="font-black text-slate-700">Choisir un CV</span>
@@ -379,33 +388,33 @@ const Envoi = () => {
                   onClick={() => setSelectedCV(cv.cvId)}
                   className={`p-4 rounded-2xl border-2 cursor-pointer flex justify-between items-center transition-all ${
                     selectedCV === cv.cvId
-                      ? "border-blue-500 bg-blue-50/50"
-                      : "border-slate-50 hover:border-slate-200"
+                      ? "border-[hsl(var(--primary))] bg-[hsl(var(--primary)/0.1)]"
+                      : "border-slate-100 hover:border-slate-200"
                   }`}
                 >
                   <div className="flex items-center gap-3 truncate">
-                    <FileText size={16} className={selectedCV === cv.cvId ? "text-blue-600" : "text-slate-300"} />
+                    <FileText size={16} className={selectedCV === cv.cvId ? "text-[hsl(var(--primary))]" : "text-slate-300"} />
                     <span className="text-xs font-black truncate">{cv.nom}</span>
                   </div>
-                  {selectedCV === cv.cvId && <CheckCircle size={16} className="text-blue-600" />}
+                  {selectedCV === cv.cvId && <CheckCircle size={16} className="text-[hsl(var(--primary))]" />}
                 </div>
               ))}
             </div>
           </div>
 
           {/* FILTRES */}
-          <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-3">
+          <div className="bg-[hsl(var(--card))] p-6 rounded-3xl shadow-sm border border-slate-200/70 space-y-3">
             <h3 className="font-black text-lg flex items-center gap-2 px-2 mb-4">
-              <SlidersHorizontal className="text-blue-600" size={20} /> Ciblage Offre
+              <SlidersHorizontal className="text-[hsl(var(--primary))]" size={20} /> Ciblage Offre
             </h3>
 
             <div className="relative group">
               <Briefcase
                 size={16}
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500 transition-colors"
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[hsl(var(--primary))] transition-colors"
               />
               <input
-                className="w-full pl-11 pr-5 py-4 bg-slate-50 rounded-2xl outline-none text-sm border border-transparent focus:border-blue-200 focus:bg-white transition-all"
+                className="w-full pl-11 pr-5 py-4 bg-[hsl(var(--background))] rounded-2xl outline-none text-sm border border-transparent focus:border-[hsl(var(--primary)/0.35)] focus:bg-[hsl(var(--card))] transition-all"
                 placeholder="Domaine (ex: informatique)"
                 value={domaine}
                 onChange={(e) => setDomaine(e.target.value)}
@@ -415,10 +424,10 @@ const Envoi = () => {
             <div className="relative group">
               <Wrench
                 size={16}
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500 transition-colors"
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[hsl(var(--primary))] transition-colors"
               />
               <input
-                className="w-full pl-11 pr-5 py-4 bg-slate-50 rounded-2xl outline-none text-sm border border-transparent focus:border-blue-200 focus:bg-white transition-all"
+                className="w-full pl-11 pr-5 py-4 bg-[hsl(var(--background))] rounded-2xl outline-none text-sm border border-transparent focus:border-[hsl(var(--primary)/0.35)] focus:bg-[hsl(var(--card))] transition-all"
                 placeholder="Spécialité (ex: backend, devops...)"
                 value={specialite}
                 onChange={(e) => setSpecialite(e.target.value)}
@@ -428,10 +437,10 @@ const Envoi = () => {
             <div className="relative group">
               <MapPin
                 size={16}
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500 transition-colors"
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[hsl(var(--primary))] transition-colors"
               />
               <input
-                className="w-full pl-11 pr-5 py-4 bg-slate-50 rounded-2xl outline-none text-sm border border-transparent focus:border-blue-200 focus:bg-white transition-all"
+                className="w-full pl-11 pr-5 py-4 bg-[hsl(var(--background))] rounded-2xl outline-none text-sm border border-transparent focus:border-[hsl(var(--primary)/0.35)] focus:bg-[hsl(var(--card))] transition-all"
                 placeholder="Ville..."
                 value={ville}
                 onChange={(e) => setVille(e.target.value)}
@@ -441,10 +450,10 @@ const Envoi = () => {
             <div className="relative group">
               <Globe
                 size={16}
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500 transition-colors"
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[hsl(var(--primary))] transition-colors"
               />
               <input
-                className="w-full pl-11 pr-5 py-4 bg-slate-50 rounded-2xl outline-none text-sm border border-transparent focus:border-blue-200 focus:bg-white transition-all"
+                className="w-full pl-11 pr-5 py-4 bg-[hsl(var(--background))] rounded-2xl outline-none text-sm border border-transparent focus:border-[hsl(var(--primary)/0.35)] focus:bg-[hsl(var(--card))] transition-all"
                 placeholder="Pays..."
                 value={pays}
                 onChange={(e) => setPays(e.target.value)}
@@ -456,10 +465,10 @@ const Envoi = () => {
               <div className="relative group">
                 <Clock
                   size={16}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500 transition-colors"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[hsl(var(--primary))] transition-colors"
                 />
                 <input
-                  className="w-full pl-11 pr-5 py-4 bg-slate-50 rounded-2xl outline-none text-sm border border-transparent focus:border-blue-200 focus:bg-white transition-all"
+                  className="w-full pl-11 pr-5 py-4 bg-[hsl(var(--background))] rounded-2xl outline-none text-sm border border-transparent focus:border-[hsl(var(--primary)/0.35)] focus:bg-[hsl(var(--card))] transition-all"
                   placeholder="Type contrat (cdi, stage...)"
                   value={typeContrat}
                   onChange={(e) => setTypeContrat(e.target.value)}
@@ -469,10 +478,10 @@ const Envoi = () => {
               <div className="relative group">
                 <Search
                   size={16}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500 transition-colors"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[hsl(var(--primary))] transition-colors"
                 />
                 <input
-                  className="w-full pl-11 pr-5 py-4 bg-slate-50 rounded-2xl outline-none text-sm border border-transparent focus:border-blue-200 focus:bg-white transition-all"
+                  className="w-full pl-11 pr-5 py-4 bg-[hsl(var(--background))] rounded-2xl outline-none text-sm border border-transparent focus:border-[hsl(var(--primary)/0.35)] focus:bg-[hsl(var(--card))] transition-all"
                   placeholder="Mode travail (remote...)"
                   value={modeTravail}
                   onChange={(e) => setModeTravail(e.target.value)}
@@ -482,10 +491,10 @@ const Envoi = () => {
               <div className="relative group">
                 <GraduationCap
                   size={16}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500 transition-colors"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[hsl(var(--primary))] transition-colors"
                 />
                 <input
-                  className="w-full pl-11 pr-5 py-4 bg-slate-50 rounded-2xl outline-none text-sm border border-transparent focus:border-blue-200 focus:bg-white transition-all"
+                  className="w-full pl-11 pr-5 py-4 bg-[hsl(var(--background))] rounded-2xl outline-none text-sm border border-transparent focus:border-[hsl(var(--primary)/0.35)] focus:bg-[hsl(var(--card))] transition-all"
                   placeholder="Niveau (junior...)"
                   value={niveau}
                   onChange={(e) => setNiveau(e.target.value)}
@@ -495,10 +504,10 @@ const Envoi = () => {
               <div className="relative group">
                 <BadgeDollarSign
                   size={16}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500 transition-colors"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[hsl(var(--primary))] transition-colors"
                 />
                 <input
-                  className="w-full pl-11 pr-5 py-4 bg-slate-50 rounded-2xl outline-none text-sm border border-transparent focus:border-blue-200 focus:bg-white transition-all"
+                  className="w-full pl-11 pr-5 py-4 bg-[hsl(var(--background))] rounded-2xl outline-none text-sm border border-transparent focus:border-[hsl(var(--primary)/0.35)] focus:bg-[hsl(var(--card))] transition-all"
                   placeholder="Salaire min"
                   value={salaireMin}
                   onChange={(e) => setSalaireMin(e.target.value)}
@@ -508,10 +517,10 @@ const Envoi = () => {
               <div className="relative group">
                 <Clock
                   size={16}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500 transition-colors"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[hsl(var(--primary))] transition-colors"
                 />
                 <input
-                  className="w-full pl-11 pr-5 py-4 bg-slate-50 rounded-2xl outline-none text-sm border border-transparent focus:border-blue-200 focus:bg-white transition-all"
+                  className="w-full pl-11 pr-5 py-4 bg-[hsl(var(--background))] rounded-2xl outline-none text-sm border border-transparent focus:border-[hsl(var(--primary)/0.35)] focus:bg-[hsl(var(--card))] transition-all"
                   placeholder="Exp min (années)"
                   value={expMin}
                   onChange={(e) => setExpMin(e.target.value)}
@@ -521,10 +530,10 @@ const Envoi = () => {
               <div className="relative group">
                 <Languages
                   size={16}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500 transition-colors"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[hsl(var(--primary))] transition-colors"
                 />
                 <input
-                  className="w-full pl-11 pr-5 py-4 bg-slate-50 rounded-2xl outline-none text-sm border border-transparent focus:border-blue-200 focus:bg-white transition-all"
+                  className="w-full pl-11 pr-5 py-4 bg-[hsl(var(--background))] rounded-2xl outline-none text-sm border border-transparent focus:border-[hsl(var(--primary)/0.35)] focus:bg-[hsl(var(--card))] transition-all"
                   placeholder="Étude min (master...)"
                   value={etudeMin}
                   onChange={(e) => setEtudeMin(e.target.value)}
@@ -535,10 +544,10 @@ const Envoi = () => {
             <div className="relative group">
               <Search
                 size={16}
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500 transition-colors"
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[hsl(var(--primary))] transition-colors"
               />
               <input
-                className="w-full pl-11 pr-5 py-4 bg-slate-50 rounded-2xl outline-none text-sm border border-transparent focus:border-blue-200 focus:bg-white transition-all"
+                className="w-full pl-11 pr-5 py-4 bg-[hsl(var(--background))] rounded-2xl outline-none text-sm border border-transparent focus:border-[hsl(var(--primary)/0.35)] focus:bg-[hsl(var(--card))] transition-all"
                 placeholder="Tags (ex: django,react...)"
                 value={tags}
                 onChange={(e) => setTags(e.target.value)}
@@ -548,11 +557,11 @@ const Envoi = () => {
             {/* MAP PICKER */}
             <div
               onClick={() => setShowMapPicker(true)}
-              className="group relative h-32 w-full rounded-[2rem] overflow-hidden cursor-pointer border-4 border-white shadow-inner mt-4"
+              className="group relative h-32 w-full rounded-2xl overflow-hidden cursor-pointer border-4 border-white shadow-inner mt-4"
             >
-              <div className="absolute inset-0 z-10 bg-blue-900/5 group-hover:bg-transparent transition-all flex items-center justify-center">
-                <div className="bg-white px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-2">
-                  <Maximize2 size={12} className="text-blue-600" />
+              <div className="absolute inset-0 z-10 bg-[hsl(var(--primary))/0.08] group-hover:bg-transparent transition-all flex items-center justify-center">
+                <div className="bg-[hsl(var(--card))] px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-2">
+                  <Maximize2 size={12} className="text-[hsl(var(--primary))]" />
                   <span className="text-[9px] font-black uppercase">Carte</span>
                 </div>
               </div>
@@ -573,7 +582,7 @@ const Envoi = () => {
           <button
             disabled={loading || !selectedCV || selectedOffreIds.length === 0}
             onClick={handleEnvoyer}
-            className="w-full py-6 bg-blue-600 text-white rounded-[2rem] font-black shadow-xl shadow-blue-100 hover:bg-blue-700 active:scale-95 disabled:bg-slate-200 transition-all flex items-center justify-center gap-3"
+            className="w-full py-5 bg-[hsl(var(--primary))] text-white rounded-2xl font-semibold shadow-sm hover:bg-[hsl(var(--primary-dark))] active:scale-95 disabled:bg-slate-200 transition-all flex items-center justify-center gap-3"
           >
             {loading ? <Loader2 className="animate-spin" /> : <Send size={20} />} DIFFUSER ({selectedOffreIds.length})
           </button>
@@ -581,18 +590,18 @@ const Envoi = () => {
 
         {/* COLONNE DROITE */}
         <div className="lg:col-span-8">
-          <div className="bg-white rounded-[3rem] shadow-sm h-[800px] flex flex-col overflow-hidden border border-slate-100">
-            <div className="p-10 border-b flex justify-between items-center">
-              <h2 className="text-3xl font-black">Offres</h2>
-              <div className="bg-blue-600 text-white px-6 py-2 rounded-2xl text-xs font-black shadow-lg italic">
+          <div className="bg-[hsl(var(--card))] rounded-3xl shadow-sm h-[800px] flex flex-col overflow-hidden border border-slate-200/70">
+            <div className="p-8 border-b flex justify-between items-center">
+              <h2 className="text-2xl font-display font-semibold">Offres</h2>
+              <div className="bg-[hsl(var(--primary))] text-white px-4 py-2 rounded-xl text-xs font-semibold shadow-sm">
                 {filteredOffres.length} MATCHS
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-10 bg-slate-50/30">
+            <div className="flex-1 overflow-y-auto p-8 bg-[hsl(var(--background))]">
               {isFetching ? (
                 <div className="flex flex-col items-center justify-center h-full">
-                  <Loader2 className="animate-spin text-blue-600" size={40} />
+                  <Loader2 className="animate-spin text-[hsl(var(--primary))]" size={40} />
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -606,9 +615,9 @@ const Envoi = () => {
                             : [...prev, offre.offreId]
                         )
                       }
-                      className={`group p-6 rounded-[2.2rem] bg-white border-2 transition-all flex justify-between items-center cursor-pointer ${
+                      className={`group p-6 rounded-3xl bg-[hsl(var(--card))] border-2 transition-all flex justify-between items-center cursor-pointer ${
                         selectedOffreIds.includes(offre.offreId)
-                          ? "border-blue-500 shadow-xl shadow-blue-50"
+                          ? "border-[hsl(var(--primary))] shadow-sm"
                           : "border-transparent hover:border-slate-200"
                       }`}
                     >
@@ -622,7 +631,7 @@ const Envoi = () => {
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2 mt-2">
-                          <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-[9px] font-black rounded-md uppercase tracking-wider">
+                          <span className="px-2 py-0.5 bg-[hsl(var(--primary)/0.08)] text-[hsl(var(--primary))] text-[9px] font-black rounded-md uppercase tracking-wider">
                             {offre.domaine}
                           </span>
 
@@ -637,27 +646,27 @@ const Envoi = () => {
                           </span>
 
                           <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1">
-                            <Globe size={10} className="text-blue-300" /> {offre.pays || "N/A"}
+                            <Globe size={10} className="text-[hsl(var(--secondary))]" /> {offre.pays || "N/A"}
                           </span>
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2 mt-2">
                           {offre.type_contrat && (
-                            <span className="text-[10px] font-extrabold text-slate-500 bg-slate-50 px-2 py-1 rounded-lg">
+                            <span className="text-[10px] font-extrabold text-slate-500 bg-[hsl(var(--background))] px-2 py-1 rounded-lg">
                               {offre.type_contrat.toUpperCase()}
                             </span>
                           )}
                           {offre.mode_travail && (
-                            <span className="text-[10px] font-extrabold text-slate-500 bg-slate-50 px-2 py-1 rounded-lg">
+                            <span className="text-[10px] font-extrabold text-slate-500 bg-[hsl(var(--background))] px-2 py-1 rounded-lg">
                               {offre.mode_travail.toUpperCase()}
                             </span>
                           )}
                           {offre.niveau && (
-                            <span className="text-[10px] font-extrabold text-slate-500 bg-slate-50 px-2 py-1 rounded-lg">
+                            <span className="text-[10px] font-extrabold text-slate-500 bg-[hsl(var(--background))] px-2 py-1 rounded-lg">
                               {offre.niveau.toUpperCase()}
                             </span>
                           )}
-                          <span className="text-[10px] font-extrabold text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">
+                          <span className="text-[10px] font-extrabold text-[hsl(var(--primary))] bg-[hsl(var(--primary)/0.08)] px-2 py-1 rounded-lg">
                             RELANCE: {offre.relance_days ?? 7}j
                           </span>
                         </div>
@@ -666,8 +675,8 @@ const Envoi = () => {
                       <div
                         className={`w-12 h-12 rounded-2xl flex-shrink-0 flex items-center justify-center transition-all ${
                           selectedOffreIds.includes(offre.offreId)
-                            ? "bg-blue-600 text-white"
-                            : "bg-slate-50 text-slate-200"
+                            ? "bg-[hsl(var(--primary))] text-white"
+                            : "bg-[hsl(var(--background))] text-slate-200"
                         }`}
                       >
                         <CheckSquare size={24} />
@@ -683,11 +692,11 @@ const Envoi = () => {
 
       {/* MODAL CARTE */}
       {showMapPicker && (
-        <div className="fixed inset-0 bg-slate-900/30 backdrop-blur-md z-[1000] flex items-center justify-center p-4">
-          <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-4xl overflow-hidden h-[80vh] flex flex-col">
+        <div className="fixed inset-0 bg-[hsl(var(--primary))/0.3] backdrop-blur-md z-[1000] flex items-center justify-center p-4">
+          <div className="bg-[hsl(var(--card))] rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden h-[80vh] flex flex-col">
             <div className="p-8 border-b flex justify-between items-center">
-              <h3 className="text-2xl font-black">Zone de recherche</h3>
-              <button onClick={() => setShowMapPicker(false)} className="p-4 hover:bg-slate-100 rounded-2xl">
+              <h3 className="text-2xl font-display font-semibold">Zone de recherche</h3>
+              <button onClick={() => setShowMapPicker(false)} className="p-4 hover:bg-[hsl(var(--background))] rounded-2xl">
                 <X />
               </button>
             </div>
@@ -697,10 +706,10 @@ const Envoi = () => {
                 <MapEvents />
               </MapContainer>
             </div>
-            <div className="p-8 bg-slate-50 border-t flex justify-end">
+            <div className="p-8 bg-[hsl(var(--background))] border-t flex justify-end">
               <button
                 onClick={() => setShowMapPicker(false)}
-                className="px-12 py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg"
+                className="px-10 py-3 bg-[hsl(var(--primary))] text-white rounded-2xl font-semibold shadow-sm"
               >
                 VALIDER
               </button>
@@ -712,13 +721,13 @@ const Envoi = () => {
       {/* TOAST */}
       {message.text && (
         <div
-          className={`fixed bottom-8 right-8 z-[9999] flex items-center gap-4 px-6 py-5 rounded-[2rem] shadow-2xl border-l-[10px] ${
-            message.type === "success" ? "bg-white border-green-500" : "bg-white border-red-500"
+          className={`fixed bottom-8 right-8 z-[9999] flex items-center gap-4 px-6 py-5 rounded-2xl shadow-2xl border-l-[10px] ${
+            message.type === "success" ? "bg-[hsl(var(--card))] border-[hsl(var(--accent))]" : "bg-[hsl(var(--card))] border-red-500"
           }`}
         >
           <div
             className={`p-3 rounded-full ${
-              message.type === "success" ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
+              message.type === "success" ? "bg-[hsl(var(--accent)/0.12)] text-[hsl(var(--accent))]" : "bg-red-100 text-red-600"
             }`}
           >
             {message.type === "success" ? <CheckCircle size={24} /> : <AlertCircle size={24} />}
@@ -734,7 +743,7 @@ const Envoi = () => {
           </button>
         </div>
       )}
-    </div>
+    </AppShell>
   );
 };
 

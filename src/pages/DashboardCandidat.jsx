@@ -1,175 +1,144 @@
-import { useState,useEffect,useMemo } from "react";
-import Navbar from "../components/Navbar";
-import Footer from "../components/Footer";
-import { Button } from "../components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
-import { Badge } from "../components/ui/badge";
-import { Building2, Send, CheckCircle, Clock, XCircle, Plus } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import countryList from "react-select-country-list";
+import { Send, FileText, CheckCircle2, Clock3, XCircle } from "lucide-react";
+import AppShell from "../components/layout/AppShell";
+import api from "../lib/api";
+
+const StatCard = ({ label, value, icon: Icon, tone }) => (
+  <div className="rounded-3xl border border-slate-200 bg-[hsl(var(--card))] p-5 shadow-sm">
+    <div className="flex items-center justify-between">
+      <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{label}</p>
+      <div className={`rounded-2xl px-3 py-2 text-xs ${tone}`}>{value}</div>
+    </div>
+    <div className="mt-6 flex items-center gap-3">
+      <div className="rounded-2xl bg-slate-100 p-3">
+        <Icon className="h-5 w-5 text-slate-700" />
+      </div>
+      <p className="text-3xl font-display font-semibold text-slate-900">{value}</p>
+    </div>
+  </div>
+);
+
+const statusBadge = (statut) => {
+  const base = "rounded-full px-3 py-1 text-xs font-semibold";
+  if (statut === "accepte") return `${base} bg-emerald-50 text-emerald-700`;
+  if (statut === "refuse") return `${base} bg-rose-50 text-rose-700`;
+  if (statut === "en_attente") return `${base} bg-amber-50 text-amber-700`;
+  return `${base} bg-slate-100 text-slate-700`;
+};
 
 const DashboardCandidat = () => {
+  const [stats, setStats] = useState(null);
+  const [envois, setEnvois] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  
-  // Données de démonstration
-
-
- 
-  
-  const [applications] = useState([
-    {
-      id: 1,
-      company: "TechCorp Solutions",
-      position: "Développeur Full Stack",
-      location: "Paris",
-      status: "pending",
-      date: "2024-01-15",
-    },
-    {
-      id: 2,
-      company: "Innovation Labs",
-      position: "Ingénieur DevOps",
-      location: "Lyon",
-      status: "accepted",
-      date: "2024-01-10",
-    },
-    {
-      id: 3,
-      company: "Digital Agency",
-      position: "Designer UI/UX",
-      location: "Remote",
-      status: "rejected",
-      date: "2024-01-05",
-    },
-  ]);
-
-  const stats = {
-    total: applications.length,
-    pending: applications.filter(app => app.status === "pending").length,
-    accepted: applications.filter(app => app.status === "accepted").length,
-    rejected: applications.filter(app => app.status === "rejected").length,
-  };
-
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case "pending":
-        return <Badge className="bg-secondary"><Clock className="w-3 h-3 mr-1" />En attente</Badge>;
-      case "accepted":
-        return <Badge className="bg-primary"><CheckCircle className="w-3 h-3 mr-1" />Acceptée</Badge>;
-      case "rejected":
-        return <Badge className="bg-destructive"><XCircle className="w-3 h-3 mr-1" />Refusée</Badge>;
-      default:
-        return null;
-    }
-  };
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const [statsRes, envoiRes] = await Promise.all([
+          api.get("/dashboard/stats/"),
+          api.get("/envois/"),
+        ]);
+        setStats(statsRes.data);
+        setEnvois(envoiRes.data?.envois || []);
+      } catch (err) {
+        setStats(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
 
   return (
-
-
-    
-    <div className="min-h-screen flex flex-col flex-grow bg-gradient-to-b from-background to-muted/30  ">
-      
-      <Link to='/envoi'>Envoyer CV</Link>
-      <main className="flex-1 container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-foreground mb-2">Dashboard Candidat</h1>
-          <p className="text-lg text-muted-foreground">
-            Gérez vos candidatures et suivez vos opportunités
-          </p>
+    <AppShell
+      title="Dashboard candidat"
+      subtitle="Vision rapide sur vos CV, vos envois et vos statuts."
+      actions={
+        <Link
+          to="/envoi"
+          className="rounded-2xl bg-[hsl(var(--primary))] px-4 py-2 text-sm font-semibold text-white"
+        >
+          Lancer un envoi
+        </Link>
+      }
+    >
+      {loading ? (
+        <div className="rounded-3xl border border-slate-200 bg-[hsl(var(--card))] p-10 text-center text-slate-500">
+          Chargement...
         </div>
+      ) : (
+        <>
+          <div className="grid gap-4 lg:grid-cols-4">
+            <StatCard label="Total CV" value={stats?.total_cvs ?? 0} icon={FileText} tone="bg-slate-100 text-slate-600" />
+            <StatCard label="Total envois" value={stats?.total_envois ?? 0} icon={Send} tone="bg-slate-100 text-slate-600" />
+            <StatCard label="Acceptes" value={stats?.envois_par_statut?.accepte ?? 0} icon={CheckCircle2} tone="bg-emerald-50 text-emerald-700" />
+            <StatCard label="Refuses" value={stats?.envois_par_statut?.refuse ?? 0} icon={XCircle} tone="bg-rose-50 text-rose-700" />
+          </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card className="border-2 hover:shadow-[var(--shadow-medium)] transition-[var(--transition-smooth)]">
-            <CardHeader className="pb-3">
-              <CardDescription>Total Candidatures</CardDescription>
-              <CardTitle className="text-4xl">{stats.total}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Send className="w-8 h-8 text-primary" />
-            </CardContent>
-          </Card>
-
-          <Card className="border-2 hover:shadow-[var(--shadow-medium)] transition-[var(--transition-smooth)]">
-            <CardHeader className="pb-3">
-              <CardDescription>En attente</CardDescription>
-              <CardTitle className="text-4xl">{stats.pending}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Clock className="w-8 h-8 text-secondary" />
-            </CardContent>
-          </Card>
-
-          <Card className="border-2 hover:shadow-[var(--shadow-medium)] transition-[var(--transition-smooth)]">
-            <CardHeader className="pb-3">
-              <CardDescription>Acceptées</CardDescription>
-              <CardTitle className="text-4xl">{stats.accepted}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CheckCircle className="w-8 h-8 text-primary" />
-            </CardContent>
-          </Card>
-
-          <Card className="border-2 hover:shadow-[var(--shadow-medium)] transition-[var(--transition-smooth)]">
-            <CardHeader className="pb-3">
-              <CardDescription>Refusées</CardDescription>
-              <CardTitle className="text-4xl">{stats.rejected}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <XCircle className="w-8 h-8 text-destructive" />
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Action Button */}
-        <div className="mb-8">
-          <Button variant="hero" size="lg" className="gap-2">
-            <Plus className="w-5 h-5" />
-            Nouvelle candidature automatique
-          </Button>
-        </div>
-
-        {/* Applications List */}
-        <Card className="shadow-[var(--shadow-medium)]">
-          <CardHeader>
-            <CardTitle className="text-2xl">Mes Candidatures</CardTitle>
-            <CardDescription>Liste de toutes vos candidatures envoyées</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {applications.map((app) => (
-                <div
-                  key={app.id}
-                  className="flex flex-col md:flex-row md:items-center justify-between p-6 rounded-lg border-2 border-border hover:border-primary hover:shadow-[var(--shadow-soft)] transition-[var(--transition-smooth)] bg-card"
-                >
-                  <div className="flex items-start gap-4 mb-4 md:mb-0">
-                    <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Building2 className="w-6 h-6 text-primary" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-lg text-foreground">{app.position}</h3>
-                      <p className="text-muted-foreground">{app.company}</p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {app.location} • Envoyée le {new Date(app.date).toLocaleDateString('fr-FR')}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    {getStatusBadge(app.status)}
-                    <Button variant="outline" size="sm">
-                      Détails
-                    </Button>
-                  </div>
+          <div className="mt-6 grid gap-6 lg:grid-cols-[2fr_1fr]">
+            <div className="rounded-3xl border border-slate-200 bg-[hsl(var(--card))] p-6 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Derniers envois</p>
+                  <h3 className="text-xl font-display font-semibold text-slate-900">Suivi des candidatures</h3>
                 </div>
-              ))}
+                <Link to="/candidatures" className="text-sm font-semibold text-slate-700">
+                  Voir tout
+                </Link>
+              </div>
+              <div className="mt-6 space-y-3">
+                {envois.slice(0, 6).map((envoi) => (
+                  <div key={envoi.envoiId} className="flex items-center justify-between rounded-2xl border border-slate-100 px-4 py-3">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">{envoi.offre_titre}</p>
+                      <p className="text-xs text-slate-500">{envoi.entreprise_nom}</p>
+                    </div>
+                    <span className={statusBadge(envoi.statut)}>{envoi.statut}</span>
+                  </div>
+                ))}
+                {envois.length === 0 && (
+                  <div className="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">
+                    Aucune candidature pour le moment.
+                  </div>
+                )}
+              </div>
             </div>
-          </CardContent>
-        </Card>
-      </main>
 
-      
-    </div>
+            <div className="rounded-3xl border border-slate-200 bg-[hsl(var(--card))] p-6 shadow-sm">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Taux reponse</p>
+                <h3 className="text-2xl font-display font-semibold text-slate-900">
+                  {stats?.taux_reponse ?? 0}%
+                </h3>
+                <p className="mt-2 text-sm text-slate-500">
+                  Combine les statuts en attente, acceptes et refuses.
+                </p>
+              </div>
+              <div className="mt-6 rounded-2xl bg-slate-50 p-4">
+                <div className="flex items-center justify-between text-xs text-slate-500">
+                  <span>En attente</span>
+                  <span>{stats?.envois_par_statut?.en_attente ?? 0}</span>
+                </div>
+                <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
+                  <span>Envoye</span>
+                  <span>{stats?.envois_par_statut?.envoye ?? 0}</span>
+                </div>
+                <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
+                  <span>Traite</span>
+                  <span>{(stats?.envois_par_statut?.accepte ?? 0) + (stats?.envois_par_statut?.refuse ?? 0)}</span>
+                </div>
+              </div>
+              <div className="mt-6 flex items-center gap-3 text-xs text-slate-500">
+                <Clock3 className="h-4 w-4" />
+                Derniere mise a jour en temps reel.
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </AppShell>
   );
 };
 

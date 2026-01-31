@@ -1,203 +1,244 @@
-import { useState } from "react";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
-import { User, Mail, Phone, MapPin, Briefcase, Save } from "lucide-react";
-import { toast } from "sonner";
-
+import { useEffect, useState } from "react";
+import { User, Mail, Phone, ImagePlus } from "lucide-react";
+import AppShell from "../components/layout/AppShell";
+import api from "../lib/api";
+import { getUserId } from "../lib/auth";
+import defaultAvatar from "../assets/avatar-default.svg";
+import { API_BASE_URL } from "../lib/api";
 
 const Profile = () => {
   const [formData, setFormData] = useState({
-    name: "Jean Dupont",
-    email: "jean.dupont@exemple.com",
-    phone: "+33 6 12 34 56 78",
-    location: "Paris, France",
-    position: "Développeur Full Stack",
-    bio: "Passionné par le développement web avec 5 ans d'expérience en React et Node.js.",
+    username: "",
+    email: "",
+    nom: "",
+    prenom: "",
+    telephone: "",
+    type: "",
   });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
 
-  const [isLoading, setIsLoading] = useState(false);
+  const userId = getUserId();
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      if (!userId) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const res = await api.get(`/utilisateurs/${userId}/`);
+        const data = res.data;
+        if (data?.photo_url && !data.photo_url.startsWith("http")) {
+          data.photo_url = `${API_BASE_URL}${data.photo_url}`;
+        }
+        setFormData(data);
+      } catch (err) {
+        setFormData((prev) => ({ ...prev }));
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [userId]);
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files?.[0] || null;
+    setPhotoFile(file);
+    if (file) {
+      setPhotoPreview(URL.createObjectURL(file));
+    } else {
+      setPhotoPreview(null);
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsLoading(true);
-
-    // Simulation de sauvegarde - À remplacer par l'appel API réel
+    if (!userId) return;
+    setSaving(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      toast.success("Profil mis à jour avec succès !");
-    } catch (error) {
-      toast.error("Erreur lors de la mise à jour du profil");
+      const payload = {
+        email: formData.email,
+        username: formData.username,
+        nom: formData.nom,
+        prenom: formData.prenom,
+        telephone: formData.telephone,
+      };
+
+      const form = new FormData();
+      Object.entries(payload).forEach(([key, value]) => {
+        if (value !== null && value !== undefined && value !== "") {
+          form.append(key, value);
+        }
+      });
+      if (photoFile) {
+        form.append("photoProfil", photoFile);
+      }
+
+      const res = await api.patch(`/utilisateurs/${userId}/`, form);
+      if (res?.data?.user) {
+        const data = res.data.user;
+        if (data?.photo_url && !data.photo_url.startsWith("http")) {
+          data.photo_url = `${API_BASE_URL}${data.photo_url}`;
+        }
+        setFormData(data);
+        setPhotoPreview(null);
+        setPhotoFile(null);
+        if (data.photo_url) {
+          window.dispatchEvent(
+            new CustomEvent("profile:photo-updated", { detail: { photo_url: data.photo_url } })
+          );
+        }
+      }
+    } catch (err) {
+      // silent
     } finally {
-      setIsLoading(false);
+      setSaving(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-background to-muted/30">
-      
-      
-      <main className="flex-1 container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-foreground mb-2">Mon Profil</h1>
-          <p className="text-lg text-muted-foreground">
-            Gérez vos informations personnelles et vos préférences
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Profile Card */}
-          <Card className="lg:col-span-1 shadow-[var(--shadow-medium)] h-fit">
-            <CardHeader className="text-center">
-              <div className="mx-auto w-32 h-32 bg-gradient-to-br from-primary to-primary-dark rounded-full flex items-center justify-center mb-4">
-                <User className="w-16 h-16 text-primary-foreground" />
+    <AppShell title="Profil" subtitle="Mettez a jour vos informations personnelles.">
+      <div className="grid gap-6 lg:grid-cols-[1fr_2fr]">
+        <div className="rounded-3xl border border-slate-200 bg-[hsl(var(--card))] p-6 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-[hsl(var(--primary))] px-4 py-6 text-white">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-300">Compte</p>
+              <h2 className="mt-2 text-2xl font-display font-semibold">{formData.username || "Utilisateur"}</h2>
+              <p className="mt-2 text-sm text-slate-300">{formData.type}</p>
+            </div>
+            <div className="flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-3">
+              <div className="relative">
+                <img
+                  src={photoPreview || formData.photo_url || defaultAvatar}
+                  alt="Profil"
+                  className="h-14 w-14 rounded-full border border-white/40 object-cover"
+                />
               </div>
-              <CardTitle className="text-2xl">{formData.name}</CardTitle>
-              <CardDescription className="text-base">{formData.position}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                  <Mail className="w-5 h-5 text-primary" />
-                  <span>{formData.email}</span>
-                </div>
-                <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                  <Phone className="w-5 h-5 text-primary" />
-                  <span>{formData.phone}</span>
-                </div>
-                <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                  <MapPin className="w-5 h-5 text-primary" />
-                  <span>{formData.location}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Edit Profile Form */}
-          <Card className="lg:col-span-2 shadow-[var(--shadow-medium)]">
-            <CardHeader>
-              <CardTitle className="text-2xl">Informations personnelles</CardTitle>
-              <CardDescription>Mettez à jour vos informations de profil</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label htmlFor="name" className="text-sm font-medium text-foreground flex items-center gap-2">
-                      <User className="w-4 h-4 text-primary" />
-                      Nom complet
-                    </label>
-                    <Input
-                      id="name"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleChange}
-                      className="h-12"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label htmlFor="email" className="text-sm font-medium text-foreground flex items-center gap-2">
-                      <Mail className="w-4 h-4 text-primary" />
-                      Email
-                    </label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      className="h-12"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label htmlFor="phone" className="text-sm font-medium text-foreground flex items-center gap-2">
-                      <Phone className="w-4 h-4 text-primary" />
-                      Téléphone
-                    </label>
-                    <Input
-                      id="phone"
-                      name="phone"
-                      type="tel"
-                      value={formData.phone}
-                      onChange={handleChange}
-                      className="h-12"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label htmlFor="location" className="text-sm font-medium text-foreground flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-primary" />
-                      Localisation
-                    </label>
-                    <Input
-                      id="location"
-                      name="location"
-                      value={formData.location}
-                      onChange={handleChange}
-                      className="h-12"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label htmlFor="position" className="text-sm font-medium text-foreground flex items-center gap-2">
-                    <Briefcase className="w-4 h-4 text-primary" />
-                    Poste recherché
-                  </label>
-                  <Input
-                    id="position"
-                    name="position"
-                    value={formData.position}
-                    onChange={handleChange}
-                    className="h-12"
+              <div className="flex items-center gap-2">
+                <label className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25 cursor-pointer">
+                  <ImagePlus className="h-4 w-4" />
+                  <input
+                    name="photoProfil"
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoChange}
+                    className="hidden"
                   />
-                </div>
-
-                <div className="space-y-2">
-                  <label htmlFor="bio" className="text-sm font-medium text-foreground">
-                    Bio
-                  </label>
-                  <textarea
-                    id="bio"
-                    name="bio"
-                    value={formData.bio}
-                    onChange={handleChange}
-                    rows={4}
-                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  />
-                </div>
-
-                <div className="flex gap-4 pt-4">
-                  <Button 
-                    type="submit" 
-                    className="gap-2"
-                    disabled={isLoading}
+                </label>
+                {(formData.photo_url || photoPreview) ? (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const form = new FormData();
+                        form.append("photoProfil", "");
+                        const res = await api.patch(`/utilisateurs/${userId}/`, form);
+                        if (res?.data?.user) {
+                          setFormData(res.data.user);
+                        }
+                        setPhotoFile(null);
+                        setPhotoPreview(null);
+                        window.dispatchEvent(new CustomEvent("profile:photo-updated", { detail: { photo_url: "" } }));
+                      } catch (err) {
+                        // silent
+                      }
+                    }}
+                    className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white/80 hover:bg-white/20"
+                    aria-label="Supprimer la photo"
                   >
-                    <Save className="w-4 h-4" />
-                    {isLoading ? "Enregistrement..." : "Enregistrer les modifications"}
-                  </Button>
-                  <Button type="button" variant="outline">
-                    Annuler
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
+                    ✕
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          </div>
+          <div className="mt-4 flex items-center gap-4">
+            <div className="space-y-2 text-sm text-slate-600">
+              <div className="flex items-center gap-2">
+                <Mail className="h-4 w-4" />
+                {formData.email}
+              </div>
+              <div className="flex items-center gap-2">
+                <Phone className="h-4 w-4" />
+                {formData.telephone || "Non renseigne"}
+              </div>
+            </div>
+          </div>
         </div>
-      </main>
 
-      
-    </div>
+        <form onSubmit={handleSubmit} className="rounded-3xl border border-slate-200 bg-[hsl(var(--card))] p-6 shadow-sm">
+          {loading ? (
+            <div className="text-center text-slate-500">Chargement...</div>
+          ) : (
+            <div className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="text-sm text-slate-600">
+                  Prenom
+                  <input
+                    name="prenom"
+                    value={formData.prenom || ""}
+                    onChange={handleChange}
+                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+                  />
+                </label>
+                <label className="text-sm text-slate-600">
+                  Nom
+                  <input
+                    name="nom"
+                    value={formData.nom || ""}
+                    onChange={handleChange}
+                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+                  />
+                </label>
+              </div>
+              <label className="text-sm text-slate-600">
+                Username
+                <input
+                  name="username"
+                  value={formData.username || ""}
+                  onChange={handleChange}
+                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+                />
+              </label>
+              <label className="text-sm text-slate-600">
+                Email
+                <input
+                  name="email"
+                  type="email"
+                  value={formData.email || ""}
+                  onChange={handleChange}
+                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+                />
+              </label>
+              <label className="text-sm text-slate-600">
+                Telephone
+                <input
+                  name="telephone"
+                  value={formData.telephone || ""}
+                  onChange={handleChange}
+                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+                />
+              </label>
+              <button
+                type="submit"
+                disabled={saving}
+                className="w-full rounded-2xl bg-[hsl(var(--primary))] px-4 py-3 text-sm font-semibold text-white"
+              >
+                {saving ? "Sauvegarde..." : "Sauvegarder"}
+              </button>
+            </div>
+          )}
+        </form>
+      </div>
+    </AppShell>
   );
 };
 
