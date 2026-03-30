@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Send, FileText, CheckCircle2, Clock3, XCircle } from "lucide-react";
+import { Send, FileText, CheckCircle2, Clock3, XCircle, Eye, Briefcase, MapPin } from "lucide-react";
+import { toast } from "sonner";
 import AppShell from "../components/layout/AppShell";
 import api from "../lib/api";
 
@@ -25,6 +26,14 @@ const statusBadge = (statut) => {
   if (statut === "refuse") return `${base} bg-rose-50 text-rose-700`;
   if (statut === "en_attente") return `${base} bg-amber-50 text-amber-700`;
   return `${base} bg-slate-100 text-slate-700`;
+};
+
+const statusLabel = (statut) => {
+  if (statut === "accepte") return "Acceptee";
+  if (statut === "refuse") return "Refusee";
+  if (statut === "en_attente") return "En attente";
+  if (statut === "envoye") return "Envoyee";
+  return statut;
 };
 
 const DashboardCandidat = () => {
@@ -90,12 +99,69 @@ const DashboardCandidat = () => {
               </div>
               <div className="mt-6 space-y-3">
                 {envois.slice(0, 6).map((envoi) => (
-                  <div key={envoi.envoiId} className="flex items-center justify-between rounded-2xl border border-slate-100 px-4 py-3">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900">{envoi.offre_titre}</p>
-                      <p className="text-xs text-slate-500">{envoi.entreprise_nom}</p>
+                  <div key={envoi.envoiId} className="rounded-2xl border border-slate-100 px-4 py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">{envoi.offre_titre}</p>
+                        <p className="text-xs text-slate-500">{envoi.entreprise_nom}</p>
+                      </div>
+                      <span className={statusBadge(envoi.statut)}>{statusLabel(envoi.statut)}</span>
                     </div>
-                    <span className={statusBadge(envoi.statut)}>{envoi.statut}</span>
+                    <div>
+                      <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
+                        {envoi.offre_domaine ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1">
+                            <Briefcase className="h-3.5 w-3.5" />
+                            {envoi.offre_domaine}
+                          </span>
+                        ) : null}
+                        {envoi.offre_specialite ? (
+                          <span className="rounded-full bg-slate-100 px-2 py-1">{envoi.offre_specialite}</span>
+                        ) : null}
+                        {envoi.offre_type_contrat ? (
+                          <span className="rounded-full bg-slate-100 px-2 py-1">{envoi.offre_type_contrat}</span>
+                        ) : null}
+                        {envoi.offre_mode_travail ? (
+                          <span className="rounded-full bg-slate-100 px-2 py-1">{envoi.offre_mode_travail}</span>
+                        ) : null}
+                        {(envoi.offre_ville || envoi.offre_pays) ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1">
+                            <MapPin className="h-3.5 w-3.5" />
+                            {[envoi.offre_ville, envoi.offre_pays].filter(Boolean).join(", ")}
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="mt-3 flex items-center justify-between">
+                        <p className="text-xs text-slate-500">CV envoye: {envoi.cv_nom || "Non disponible"}</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (envoi.cv_fichier_url) {
+                              window.open(envoi.cv_fichier_url, "_blank", "noopener,noreferrer");
+                            } else {
+                              toast.error("Le CV envoye n'est pas disponible.");
+                            }
+                          }}
+                          className="inline-flex items-center gap-1 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                        >
+                          <Eye className="h-4 w-4" />
+                          Voir CV
+                        </button>
+                      </div>
+                      {(envoi.creneaux || []).length > 0 ? (
+                        <div className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                          <p className="font-semibold text-slate-700">
+                            Creneaux proposes: {(envoi.creneaux || []).length}
+                          </p>
+                          <p className="mt-1">
+                            Premier creneau: {new Date(envoi.creneaux[0].startAt).toLocaleString("fr-FR")}
+                          </p>
+                          <Link to="/candidatures" className="mt-2 inline-flex font-semibold text-[hsl(var(--primary))]">
+                            Choisir un creneau
+                          </Link>
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                 ))}
                 {envois.length === 0 && (

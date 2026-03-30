@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { Briefcase, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import api from "../lib/api";
+import { getApiError } from "../lib/apiError";
 
 const Signup = () => {
   const [formData, setFormData] = useState({
@@ -72,13 +73,15 @@ const Signup = () => {
 
       await api.post("/utilisateurs/", userForm, {
         headers: { "Content-Type": "multipart/form-data" },
+        showErrorToast: false,
+        showSuccessToast: false,
       });
 
       if (formData.type === "entreprise") {
         const loginRes = await api.post("/api/accessToken/", {
           username: formData.username,
           password: formData.password,
-        });
+        }, { showErrorToast: false, showSuccessToast: false });
         localStorage.setItem("accessToken", loginRes.data.access);
         localStorage.setItem("refreshToken", loginRes.data.refresh);
 
@@ -88,7 +91,7 @@ const Signup = () => {
           ville: formData.ville || "",
           pays: formData.pays || "Algerie",
           recevoirCandidatures: true,
-        });
+        }, { showErrorToast: false, showSuccessToast: false });
 
         toast.success("Entreprise creee avec succes.");
         navigate("/dashboard-entreprise");
@@ -99,11 +102,10 @@ const Signup = () => {
       navigate("/login");
     } catch (error) {
       console.error(error);
-      const apiError =
-        error?.response?.data && typeof error.response.data === "object"
-          ? JSON.stringify(error.response.data)
-          : "Erreur lors de l'inscription.";
-      toast.error(apiError);
+      const apiError = getApiError(error, "Erreur lors de l'inscription.");
+      toast.error(apiError.message, {
+        description: apiError.details[0] || undefined,
+      });
     } finally {
       setIsLoading(false);
     }

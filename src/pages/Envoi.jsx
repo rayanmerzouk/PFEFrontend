@@ -20,11 +20,14 @@ import {
   Clock,
   Languages,
   Wrench,
+  AlertTriangle,
+  Info,
 } from "lucide-react";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import AppShell from "../components/layout/AppShell";
+import { getApiError } from "../lib/apiError";
 
 // Leaflet icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -38,6 +41,8 @@ L.Icon.Default.mergeOptions({
 });
 
 const API_BASE_URL = "http://127.0.0.1:8000";
+const MAX_CV_SIZE_MB = 10;
+const MAX_CV_SIZE_BYTES = MAX_CV_SIZE_MB * 1024 * 1024;
 
 const fastNormalize = (str) =>
   (str || "")
@@ -47,6 +52,25 @@ const fastNormalize = (str) =>
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[\s-]/g, "");
+
+const getAiTone = (cv) => {
+  if (cv?.ai_status === "validated") {
+    return {
+      label: "Valide IA",
+      badge: "bg-emerald-100 text-emerald-700",
+    };
+  }
+  if (cv?.ai_status === "rejected") {
+    return {
+      label: "Refuse IA",
+      badge: "bg-red-100 text-red-700",
+    };
+  }
+  return {
+    label: "En attente IA",
+    badge: "bg-amber-100 text-amber-700",
+  };
+};
 
 const Envoi = () => {
   const [cvs, setCvs] = useState([]);
@@ -92,6 +116,15 @@ const Envoi = () => {
   const [uploading, setUploading] = useState(false);
 
   const [message, setMessage] = useState({ type: "", text: "" });
+  const [messageTimeoutId, setMessageTimeoutId] = useState(null);
+
+  const pushMessage = (type, text, timeout = 4000) => {
+    if (messageTimeoutId) clearTimeout(messageTimeoutId);
+    setMessage({ type, text });
+    if (!timeout) return;
+    const id = setTimeout(() => setMessage({ type: "", text: "" }), timeout);
+    setMessageTimeoutId(id);
+  };
 
   const api = useMemo(() => {
     const instance = axios.create({ baseURL: API_BASE_URL });
@@ -162,8 +195,8 @@ const Envoi = () => {
       setAllOffres(optimized);
     } catch (err) {
       console.error(err);
-      setMessage({ type: "error", text: "Erreur lors du chargement des données." });
-      setTimeout(() => setMessage({ type: "", text: "" }), 4000);
+      const apiError = getApiError(err, "Erreur lors du chargement des donnees.");
+      pushMessage("error", apiError.details[0] || apiError.message);
     } finally {
       setIsFetching(false);
     }
@@ -173,6 +206,12 @@ const Envoi = () => {
     loadData();
     // eslint-disable-next-line
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (messageTimeoutId) clearTimeout(messageTimeoutId);
+    };
+  }, [messageTimeoutId]);
 
   const filteredOffres = useMemo(() => {
     const f = debouncedFilters;
@@ -218,6 +257,12 @@ const Envoi = () => {
     });
   }, [allOffres, debouncedFilters]);
 
+  const selectedCvObject = useMemo(
+    () => cvs.find((cv) => cv.cvId === selectedCV) || null,
+    [cvs, selectedCV]
+  );
+  const canSendSelectedCv = selectedCvObject ? selectedCvObject.ai_status === "validated" : false;
+
   // Auto-sélection "smart":
   // - Si le user n'a rien sélectionné -> sélectionner tous les matchs
   // - Sinon -> ne pas écraser sa sélection manuelle à chaque filtre
@@ -231,15 +276,28 @@ const Envoi = () => {
   const handleUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    e.target.value = "";
 
     const allowed = [
       "application/pdf",
       "application/msword",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "image/jpeg",
+      "image/png",
     ];
-    if (!allowed.includes(file.type)) {
-      setMessage({ type: "error", text: "Format non supporté. Utilisez PDF ou DOC/DOCX." });
-      setTimeout(() => setMessage({ type: "", text: "" }), 4000);
+    const ext = `.${(file.name.split(".").pop() || "").toLowerCase()}`;
+    const allowedExt = [".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png", ".jfif"];
+    if (!allowed.includes(file.type) && !allowedExt.includes(ext)) {
+      pushMessage("warning", "Format non supporte. Utilisez PDF, DOC, DOCX, JPEG, PNG ou JFIF.");
+      return;
+    }
+
+    if (file.size > MAX_CV_SIZE_BYTES) {
+      const fileSizeMb = (file.size / (1024 * 1024)).toFixed(2);
+      pushMessage(
+        "error",
+        `Fichier trop volumineux (${fileSizeMb} MB). Taille maximale: ${MAX_CV_SIZE_MB} MB.`
+      );
       return;
     }
 
@@ -254,37 +312,19 @@ const Envoi = () => {
         headers: { "Content-Type": "multipart/form-data" },
       });
       await loadData();
-      setMessage({ type: "success", text: "CV ajouté à votre profil." });
+      pushMessage("success", "CV ajoute a votre profil.");
     } catch (err) {
       console.error(err);
-      setMessage({ type: "error", text: "Erreur lors de l'upload." });
+      const apiError = getApiError(err, "Erreur lors de l'upload.");
+      pushMessage("error", apiError.details[0] || apiError.message);
     } finally {
       setUploading(false);
-      setTimeout(() => setMessage({ type: "", text: "" }), 4000);
     }
-  };
-
-  const buildErrorText = (err) => {
-    const code = err?.response?.status;
-
-    if (code === 401) return "Session expirée. Reconnectez-vous.";
-    if (code === 403) return "Accès refusé.";
-    if (code === 429) return "Trop de tentatives. Réessayez plus tard.";
-    if (code === 400) {
-      const data = err?.response?.data;
-      if (!data) return "Données invalides.";
-      if (typeof data === "string") return data;
-      if (data.error) return data.error;
-      if (data.details) return typeof data.details === "string" ? data.details : "Erreur de validation.";
-      return "Erreur de validation.";
-    }
-    return "L'envoi a échoué.";
   };
 
   const handleEnvoyer = async () => {
     if (!selectedCV || selectedOffreIds.length === 0) {
-      setMessage({ type: "error", text: "Sélectionnez un CV et au moins une offre." });
-      setTimeout(() => setMessage({ type: "", text: "" }), 4000);
+      pushMessage("warning", "Selectionnez un CV et au moins une offre.");
       return;
     }
 
@@ -296,7 +336,7 @@ const Envoi = () => {
       });
 
       if (res.data?.success === false && typeof res.data?.message === "string") {
-        setMessage({ type: "error", text: res.data.message });
+        pushMessage("error", res.data.message);
         return;
       }
 
@@ -321,13 +361,13 @@ const Envoi = () => {
         text += ` Exemple: ${first.offre} (${first.entreprise}) -> ${reason}`;
       }
 
-      setMessage({ type: created > 0 ? "success" : "error", text });
+      pushMessage(created > 0 ? "success" : "warning", text, 5000);
     } catch (err) {
       console.error(err);
-      setMessage({ type: "error", text: buildErrorText(err) });
+      const apiError = getApiError(err, "L'envoi a echoue.");
+      pushMessage("error", apiError.details[0] || apiError.message, 5000);
     } finally {
       setLoading(false);
-      setTimeout(() => setMessage({ type: "", text: "" }), 5000);
     }
   };
 
@@ -349,8 +389,7 @@ const Envoi = () => {
           }
         } catch (error) {
           console.error(error);
-          setMessage({ type: "error", text: "Impossible de récupérer l'adresse depuis la carte." });
-          setTimeout(() => setMessage({ type: "", text: "" }), 4000);
+          pushMessage("error", "Impossible de recuperer l'adresse depuis la carte.");
         }
       },
     });
@@ -377,7 +416,7 @@ const Envoi = () => {
                   )}
                 </div>
                 <span className="font-black text-slate-700">Choisir un CV</span>
-                <input type="file" className="hidden" onChange={handleUpload} accept=".pdf,.doc,.docx" />
+                <input type="file" className="hidden" onChange={handleUpload} accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.jfif" />
               </div>
             </label>
 
@@ -385,7 +424,15 @@ const Envoi = () => {
               {cvs.map((cv) => (
                 <div
                   key={cv.cvId}
-                  onClick={() => setSelectedCV(cv.cvId)}
+                  onClick={() => {
+                    setSelectedCV(cv.cvId);
+                    if (cv.ai_status !== "validated") {
+                      pushMessage(
+                        "warning",
+                        "Ce CV n'est pas encore valide IA. Ouvrez Mes CV > Rapport IA pour le corriger."
+                      );
+                    }
+                  }}
                   className={`p-4 rounded-2xl border-2 cursor-pointer flex justify-between items-center transition-all ${
                     selectedCV === cv.cvId
                       ? "border-[hsl(var(--primary))] bg-[hsl(var(--primary)/0.1)]"
@@ -394,12 +441,25 @@ const Envoi = () => {
                 >
                   <div className="flex items-center gap-3 truncate">
                     <FileText size={16} className={selectedCV === cv.cvId ? "text-[hsl(var(--primary))]" : "text-slate-300"} />
-                    <span className="text-xs font-black truncate">{cv.nom}</span>
+                    <div className="min-w-0">
+                      <span className="block text-xs font-black truncate">{cv.nom}</span>
+                      <div className="mt-1 flex items-center gap-2">
+                        <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${getAiTone(cv).badge}`}>
+                          {getAiTone(cv).label}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                   {selectedCV === cv.cvId && <CheckCircle size={16} className="text-[hsl(var(--primary))]" />}
                 </div>
               ))}
             </div>
+
+            {selectedCvObject && selectedCvObject.ai_status !== "validated" && (
+              <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-700">
+                Envoi bloque: le CV selectionne n'est pas valide IA. Consultez le Rapport IA dans "Mes CV".
+              </div>
+            )}
           </div>
 
           {/* FILTRES */}
@@ -580,7 +640,7 @@ const Envoi = () => {
 
           {/* ENVOI */}
           <button
-            disabled={loading || !selectedCV || selectedOffreIds.length === 0}
+            disabled={loading || !selectedCV || !canSendSelectedCv || selectedOffreIds.length === 0}
             onClick={handleEnvoyer}
             className="w-full py-5 bg-[hsl(var(--primary))] text-white rounded-2xl font-semibold shadow-sm hover:bg-[hsl(var(--primary-dark))] active:scale-95 disabled:bg-slate-200 transition-all flex items-center justify-center gap-3"
           >
@@ -717,34 +777,65 @@ const Envoi = () => {
           </div>
         </div>
       )}
-
       {/* TOAST */}
       {message.text && (
-        <div
-          className={`fixed bottom-8 right-8 z-[9999] flex items-center gap-4 px-6 py-5 rounded-2xl shadow-2xl border-l-[10px] ${
-            message.type === "success" ? "bg-[hsl(var(--card))] border-[hsl(var(--accent))]" : "bg-[hsl(var(--card))] border-red-500"
-          }`}
-        >
-          <div
-            className={`p-3 rounded-full ${
-              message.type === "success" ? "bg-[hsl(var(--accent)/0.12)] text-[hsl(var(--accent))]" : "bg-red-100 text-red-600"
-            }`}
-          >
-            {message.type === "success" ? <CheckCircle size={24} /> : <AlertCircle size={24} />}
-          </div>
-          <div>
-            <h5 className="font-black text-slate-800 text-sm uppercase">
-              {message.type === "success" ? "Succès" : "Erreur"}
-            </h5>
-            <p className="text-xs text-slate-500 font-bold">{message.text}</p>
-          </div>
-          <button onClick={() => setMessage({ type: "", text: "" })} className="ml-4 text-slate-300">
-            <X size={18} />
-          </button>
+        <div className="fixed bottom-8 right-8 z-[9999] relative flex items-center gap-4 px-6 py-5 rounded-2xl shadow-2xl border-l-[10px] bg-[hsl(var(--card))] border-slate-200">
+          {(() => {
+            const styles = {
+              success: {
+                badge: "bg-emerald-100 text-emerald-700",
+                border: "border-emerald-500",
+                title: "Succes",
+                icon: <CheckCircle size={24} />,
+              },
+              error: {
+                badge: "bg-red-100 text-red-700",
+                border: "border-red-500",
+                title: "Erreur",
+                icon: <AlertCircle size={24} />,
+              },
+              warning: {
+                badge: "bg-amber-100 text-amber-700",
+                border: "border-amber-500",
+                title: "Attention",
+                icon: <AlertTriangle size={24} />,
+              },
+              info: {
+                badge: "bg-blue-100 text-blue-700",
+                border: "border-blue-500",
+                title: "Info",
+                icon: <Info size={24} />,
+              },
+            };
+
+            const tone = styles[message.type] || styles.info;
+
+            return (
+              <>
+                <div className={`p-3 rounded-full ${tone.badge}`}>{tone.icon}</div>
+                <div>
+                  <h5 className="font-black text-slate-800 text-sm uppercase">{tone.title}</h5>
+                  <p className="text-xs text-slate-500 font-bold">{message.text}</p>
+                </div>
+                <button
+                  onClick={() => {
+                    if (messageTimeoutId) clearTimeout(messageTimeoutId);
+                    setMessage({ type: "", text: "" });
+                  }}
+                  className="ml-4 text-slate-300"
+                >
+                  <X size={18} />
+                </button>
+                <span className={`absolute left-0 top-0 h-full w-[10px] rounded-l-2xl ${tone.border}`} />
+              </>
+            );
+          })()}
         </div>
       )}
+
     </AppShell>
   );
 };
 
 export default Envoi;
+

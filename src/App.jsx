@@ -1,4 +1,5 @@
 import { Routes, Route } from "react-router-dom";
+import { Toaster } from "sonner";
 import RequireAuth from "./components/RequireAuth";
 import RequireRole from "./components/RequireRole";
 import RootRedirect from "./pages/RootRedirect";
@@ -14,115 +15,147 @@ import EntrepriseOffres from "./pages/EntrepriseOffres";
 import EntrepriseCandidatures from "./pages/EntrepriseCandidatures";
 import Profile from "./pages/Profile";
 import Envoi from "./pages/Envoi.jsx";
+import RendezVous from "./pages/RendezVous.jsx";
+import MeetingRoom from "./pages/MeetingRoom.jsx";
 import NotFound from "./pages/NotFound";
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<RootRedirect />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
+    <>
+      <Toaster
+        position="top-right"
+        richColors
+        closeButton
+        toastOptions={{
+          duration: 5000,
+        }}
+      />
+      <Routes>
+        <Route path="/" element={<RootRedirect />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
 
-      <Route
-        path="/dashboard-candidat"
-        element={
-          <RequireAuth>
-            <RequireRole roles={["candidat"]}>
-              <DashboardCandidat />
-            </RequireRole>
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/dashboard-entreprise"
-        element={
-          <RequireAuth>
-            <RequireRole roles={["entreprise"]}>
-              <DashboardEntreprise />
-            </RequireRole>
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/cvs"
-        element={
-          <RequireAuth>
-            <RequireRole roles={["candidat"]}>
-              <Cvs />
-            </RequireRole>
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/offres"
-        element={
-          <RequireAuth>
-            <RequireRole roles={["candidat"]}>
-              <Offers />
-            </RequireRole>
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/offres/:id"
-        element={
-          <RequireAuth>
-            <RequireRole roles={["candidat"]}>
-              <OfferDetail />
-            </RequireRole>
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/candidatures"
-        element={
-          <RequireAuth>
-            <RequireRole roles={["candidat"]}>
-              <Candidatures />
-            </RequireRole>
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/entreprise/offres"
-        element={
-          <RequireAuth>
-            <RequireRole roles={["entreprise"]}>
-              <EntrepriseOffres />
-            </RequireRole>
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/entreprise/candidatures"
-        element={
-          <RequireAuth>
-            <RequireRole roles={["entreprise"]}>
-              <EntrepriseCandidatures />
-            </RequireRole>
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/profil"
-        element={
-          <RequireAuth>
-            <Profile />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/envoi"
-        element={
-          <RequireAuth>
-            <RequireRole roles={["candidat"]}>
-              <Envoi />
-            </RequireRole>
-          </RequireAuth>
-        }
-      />
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+        <Route
+          path="/dashboard-candidat"
+          element={
+            <RequireAuth>
+              <RequireRole roles={["candidat"]}>
+                <DashboardCandidat />
+              </RequireRole>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/dashboard-entreprise"
+          element={
+            <RequireAuth>
+              <RequireRole roles={["entreprise"]}>
+                <DashboardEntreprise />
+              </RequireRole>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/cvs"
+          element={
+            <RequireAuth>
+              <RequireRole roles={["candidat"]}>
+                <Cvs />
+              </RequireRole>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/offres"
+          element={
+            <RequireAuth>
+              <RequireRole roles={["candidat"]}>
+                <Offers />
+              </RequireRole>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/offres/:id"
+          element={
+            <RequireAuth>
+              <RequireRole roles={["candidat"]}>
+                <OfferDetail />
+              </RequireRole>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/candidatures"
+          element={
+            <RequireAuth>
+              <RequireRole roles={["candidat"]}>
+                <Candidatures />
+              </RequireRole>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/entreprise/offres"
+          element={
+            <RequireAuth>
+              <RequireRole roles={["entreprise"]}>
+                <EntrepriseOffres />
+              </RequireRole>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/entreprise/candidatures"
+          element={
+            <RequireAuth>
+              <RequireRole roles={["entreprise"]}>
+                <EntrepriseCandidatures />
+              </RequireRole>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/profil"
+          element={
+            <RequireAuth>
+              <Profile />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/envoi"
+          element={
+            <RequireAuth>
+              <RequireRole roles={["candidat"]}>
+                <Envoi />
+              </RequireRole>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/rendez-vous"
+          element={
+            <RequireAuth>
+              <RequireRole roles={["candidat", "entreprise"]}>
+                <RendezVous />
+              </RequireRole>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/rendez-vous/:creneauId/meeting"
+          element={
+            <RequireAuth>
+              <RequireRole roles={["candidat", "entreprise"]}>
+                <MeetingRoom />
+              </RequireRole>
+            </RequireAuth>
+          }
+        />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </>
   );
 }
 

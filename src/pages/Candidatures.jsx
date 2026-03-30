@@ -11,6 +11,14 @@ const statusStyle = (statut) => {
   return `${base} bg-slate-100 text-slate-700`;
 };
 
+const statusLabel = (statut) => {
+  if (statut === "accepte") return "Acceptee";
+  if (statut === "refuse") return "Refusee";
+  if (statut === "en_attente") return "En attente";
+  if (statut === "envoye") return "Envoyee";
+  return statut;
+};
+
 const statusIcon = (statut) => {
   if (statut === "accepte") return <CheckCircle2 className="h-4 w-4 text-emerald-600" />;
   if (statut === "refuse") return <XCircle className="h-4 w-4 text-rose-600" />;
@@ -53,7 +61,7 @@ const Candidatures = () => {
                     <p className="text-xs text-slate-500">{envoi.entreprise_nom}</p>
                   </div>
                 </div>
-                <span className={statusStyle(envoi.statut)}>{envoi.statut}</span>
+                <span className={statusStyle(envoi.statut)}>{statusLabel(envoi.statut)}</span>
               </div>
             ))}
             {envois.length === 0 && (

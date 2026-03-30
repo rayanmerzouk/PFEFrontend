@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Briefcase, Lock, User } from "lucide-react";
 import { toast } from "sonner";
 import api from "../lib/api";
+import { getApiError } from "../lib/apiError";
 
 const Login = () => {
   const [username, setUsername] = useState("");
@@ -14,7 +15,7 @@ const Login = () => {
     setIsLoading(true);
 
     api
-      .post("/api/accessToken/", { username, password })
+      .post("/api/accessToken/", { username, password }, { showErrorToast: false, showSuccessToast: false })
       .then((res) => {
         localStorage.setItem("accessToken", res.data.access);
         localStorage.setItem("refreshToken", res.data.refresh);
@@ -22,11 +23,10 @@ const Login = () => {
         navigate("/");
       })
       .catch((err) => {
-        if (err.response?.status === 401) {
-          toast.error("Identifiants invalides.");
-        } else {
-          toast.error("Erreur de connexion.");
-        }
+        const apiError = getApiError(err, "Erreur de connexion.");
+        toast.error(apiError.message, {
+          description: apiError.details[0] || undefined,
+        });
       })
       .finally(() => setIsLoading(false));
   };

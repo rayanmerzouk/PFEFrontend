@@ -5,6 +5,7 @@ import {
   FileText,
   Briefcase,
   ClipboardList,
+  CalendarCheck2,
   UserCircle2,
   Building2,
   Layers,
@@ -21,6 +22,7 @@ const Sidebar = () => {
     { to: "/dashboard-candidat", label: "Dashboard", icon: LayoutDashboard },
     { to: "/cvs", label: "Mes CV", icon: FileText },
     { to: "/candidatures", label: "Candidatures", icon: ClipboardList },
+    { to: "/rendez-vous", label: "Rendez-vous", icon: CalendarCheck2 },
     { to: "/envoi", label: "Envoi", icon: Send },
     { to: "/profil", label: "Profil", icon: UserCircle2 },
   ];
@@ -29,6 +31,7 @@ const Sidebar = () => {
     { to: "/dashboard-entreprise", label: "Dashboard", icon: LayoutDashboard },
     { to: "/entreprise/offres", label: "Offres", icon: Layers },
     { to: "/entreprise/candidatures", label: "Candidatures", icon: ClipboardList },
+    { to: "/rendez-vous", label: "Rendez-vous", icon: CalendarCheck2 },
     { to: "/profil", label: "Profil", icon: Building2 },
   ];
 

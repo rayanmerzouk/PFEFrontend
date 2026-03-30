@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
 import { User, Mail, Phone, ImagePlus } from "lucide-react";
+import { toast } from "sonner";
 import AppShell from "../components/layout/AppShell";
 import api from "../lib/api";
 import { getUserId } from "../lib/auth";
 import defaultAvatar from "../assets/avatar-default.svg";
 import { API_BASE_URL } from "../lib/api";
+
+const MAX_PHOTO_SIZE_MB = 5;
+const MAX_PHOTO_SIZE_BYTES = MAX_PHOTO_SIZE_MB * 1024 * 1024;
 
 const Profile = () => {
   const [formData, setFormData] = useState({
@@ -51,6 +55,18 @@ const Profile = () => {
 
   const handlePhotoChange = (e) => {
     const file = e.target.files?.[0] || null;
+    e.target.value = "";
+
+    if (file && file.size > MAX_PHOTO_SIZE_BYTES) {
+      const fileSizeMb = (file.size / (1024 * 1024)).toFixed(2);
+      toast.error("Echec mise a jour photo", {
+        description: `Photo trop volumineuse (${fileSizeMb} MB). Taille maximale: ${MAX_PHOTO_SIZE_MB} MB.`,
+      });
+      setPhotoFile(null);
+      setPhotoPreview(null);
+      return;
+    }
+
     setPhotoFile(file);
     if (file) {
       setPhotoPreview(URL.createObjectURL(file));
@@ -82,7 +98,9 @@ const Profile = () => {
         form.append("photoProfil", photoFile);
       }
 
-      const res = await api.patch(`/utilisateurs/${userId}/`, form);
+      const res = await api.patch(`/utilisateurs/${userId}/`, form, {
+        successMessage: "Profil mis a jour avec succes.",
+      });
       if (res?.data?.user) {
         const data = res.data.user;
         if (data?.photo_url && !data.photo_url.startsWith("http")) {
@@ -108,13 +126,13 @@ const Profile = () => {
     <AppShell title="Profil" subtitle="Mettez a jour vos informations personnelles.">
       <div className="grid gap-6 lg:grid-cols-[1fr_2fr]">
         <div className="rounded-3xl border border-slate-200 bg-[hsl(var(--card))] p-6 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-[hsl(var(--primary))] px-4 py-6 text-white">
+          <div className="flex  items-center justify-between gap-4 rounded-2xl bg-[hsl(var(--primary))] px-4 py-6 text-white">
             <div>
               <p className="text-xs uppercase tracking-[0.2em] text-slate-300">Compte</p>
               <h2 className="mt-2 text-2xl font-display font-semibold">{formData.username || "Utilisateur"}</h2>
               <p className="mt-2 text-sm text-slate-300">{formData.type}</p>
             </div>
-            <div className="flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-3">
+            <div className="flex items-center gap-2 rounded-2xl bg-[hsl(var(--primary))] px-4 py-3">
               <div className="relative">
                 <img
                   src={photoPreview || formData.photo_url || defaultAvatar}
@@ -122,8 +140,10 @@ const Profile = () => {
                   className="h-14 w-14 rounded-full border border-white/40 object-cover"
                 />
               </div>
-              <div className="flex items-center gap-2">
-                <label className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25 cursor-pointer">
+              
+              <div className="flex items-center  w-1 h-1">
+                {!photoPreview && (
+                <label className="flex h-9 w-9 items-center justify-center rounded-full  text-white hover:bg-white/25 cursor-pointer">
                   <ImagePlus className="h-4 w-4" />
                   <input
                     name="photoProfil"
@@ -133,6 +153,7 @@ const Profile = () => {
                     className="hidden"
                   />
                 </label>
+                )}
                 {(formData.photo_url || photoPreview) ? (
                   <button
                     type="button"
@@ -140,7 +161,9 @@ const Profile = () => {
                       try {
                         const form = new FormData();
                         form.append("photoProfil", "");
-                        const res = await api.patch(`/utilisateurs/${userId}/`, form);
+                        const res = await api.patch(`/utilisateurs/${userId}/`, form, {
+                          successMessage: "Photo supprimee avec succes.",
+                        });
                         if (res?.data?.user) {
                           setFormData(res.data.user);
                         }
@@ -151,7 +174,7 @@ const Profile = () => {
                         // silent
                       }
                     }}
-                    className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white/80 hover:bg-white/20"
+                    className="  relative right-10.5 top-5 flex h-9 w-9  text-red-200  hover:text-red-600 font-bold"
                     aria-label="Supprimer la photo"
                   >
                     ✕
