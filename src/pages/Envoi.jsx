@@ -233,7 +233,7 @@ const Envoi = () => {
     return allOffres.filter((o) => {
       // important: offre doit accepter candidatures, être publiée, non archivée
       if (o.estArchivee) return false;
-      if (!o.estPubliee) return false;
+      
       if (!o.recevoirCandidatures) return false;
 
       if (nD && !o._normDomaine?.includes(nD)) return false;
